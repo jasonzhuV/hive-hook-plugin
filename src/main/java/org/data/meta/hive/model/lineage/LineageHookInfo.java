@@ -1,14 +1,20 @@
 package org.data.meta.hive.model.lineage;
 
+import org.data.meta.hive.model.message.Message;
+
 import java.util.List;
 
-public class LineageHookInfo {
+/**
+ * @author jason
+ */
+public class LineageHookInfo implements Message {
     private String database;
     private Long duration;
     private String engine;
     private String hash;
     private List<String> jobIds;
     private String queryText;
+    private String operationName;
     private Long timestamp;
     private String user;
     private String[] userGroupNames;
@@ -66,6 +72,14 @@ public class LineageHookInfo {
 
     public void setQueryText(String queryText) {
         this.queryText = queryText;
+    }
+
+    public String getOperationName() {
+        return this.operationName;
+    }
+
+    public void setOperationName(String operationName) {
+        this.operationName = operationName;
     }
 
     public Long getTimestamp() {

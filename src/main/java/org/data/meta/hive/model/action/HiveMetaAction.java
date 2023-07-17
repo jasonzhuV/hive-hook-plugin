@@ -1,6 +1,8 @@
 package org.data.meta.hive.model.action;
 
-public class HiveMetaAction {
+import org.data.meta.hive.model.message.Message;
+
+public class HiveMetaAction implements Message {
     private String objectType;
     private String operationName;
 

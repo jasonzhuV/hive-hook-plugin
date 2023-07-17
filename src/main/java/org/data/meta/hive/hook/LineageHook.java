@@ -12,11 +12,7 @@ import org.apache.hadoop.hive.ql.exec.Operator;
 import org.apache.hadoop.hive.ql.exec.SelectOperator;
 import org.apache.hadoop.hive.ql.exec.TaskRunner;
 import org.apache.hadoop.hive.ql.exec.Utilities;
-import org.apache.hadoop.hive.ql.hooks.Entity;
-import org.apache.hadoop.hive.ql.hooks.ExecuteWithHookContext;
-import org.apache.hadoop.hive.ql.hooks.HookContext;
-import org.apache.hadoop.hive.ql.hooks.LineageInfo;
-import org.apache.hadoop.hive.ql.hooks.WriteEntity;
+import org.apache.hadoop.hive.ql.hooks.*;
 import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.hadoop.hive.ql.optimizer.lineage.LineageCtx;
 import org.apache.hadoop.hive.ql.plan.HiveOperation;
@@ -43,9 +39,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class LineageLoggerHook implements ExecuteWithHookContext
+public class LineageHook implements ExecuteWithHookContext
 {
-    private static final HashSet<String> OPERATION_NAMES;
+    private static final HashSet<String> OPERATION_NAMES = new HashSet<String>();
+
+    static {
+        OPERATION_NAMES.add(HiveOperation.QUERY.getOperationName());
+        OPERATION_NAMES.add(HiveOperation.CREATETABLE_AS_SELECT.getOperationName());
+        OPERATION_NAMES.add(HiveOperation.ALTERVIEW_AS.getOperationName());
+        OPERATION_NAMES.add(HiveOperation.CREATEVIEW.getOperationName());
+    }
     private static final String FORMAT_VERSION = "1.0";
     
     @Override
@@ -53,8 +56,19 @@ public class LineageLoggerHook implements ExecuteWithHookContext
         assert hookContext.getHookType() == HookContext.HookType.POST_EXEC_HOOK;
         final QueryPlan plan = hookContext.getQueryPlan();
         final LineageCtx.Index index = hookContext.getIndex();
+//        Set<ReadEntity> inputs = hookContext.getInputs();
+//        for (ReadEntity input : inputs) {
+//            if (Entity.Type.TABLE.toString().equals(input.getType().toString())) {
+//                input.getTable().getTTable()
+//            }
+//        }
         final SessionState ss = SessionState.get();
-        if (ss != null && index != null && LineageLoggerHook.OPERATION_NAMES.contains(plan.getOperationName()) && !plan.isExplain()) {
+
+        if (ss != null
+                && index != null
+                && LineageHook.OPERATION_NAMES.contains(plan.getOperationName())
+//                && plan.getOperationName().equals(HiveOperation.CREATETABLE.getOperationName())
+                && !plan.isExplain()) {
             try {
                 String version = null;
                 String user = null;
@@ -66,7 +80,9 @@ public class LineageLoggerHook implements ExecuteWithHookContext
                 String database = null;
                 String hash = null;
                 String queryText = null;
+                String operationName = null;
                 final String queryStr = plan.getQueryStr().trim();
+                final String planOperationName = plan.getOperationName();
                 version = "1.0";
                 final HiveConf conf = ss.getConf();
                 long queryTime = plan.getQueryStartTime();
@@ -90,37 +106,64 @@ public class LineageLoggerHook implements ExecuteWithHookContext
                 database = MetaLogUtils.normalizeIdentifier(ss.getCurrentDatabase());
                 hash = DigestUtils.md5Hex(queryStr);
                 queryText = queryStr;
+                operationName = planOperationName;
                 final List<Edge> edges = this.getEdges(plan, index);
                 final List<TableLineage> tableLineages = this.buildTableLineages(edges);
                 final List<ColumnLineage> columnLineages = this.buildColumnLineages(edges);
-                final LineageHookInfo lhInfo = new LineageHookInfo();
-                lhInfo.setConf(hookContext.getConf().get("dw_output"));
-                lhInfo.setDatabase(database);
-                lhInfo.setDuration(duration);
-                lhInfo.setEngine(engine);
-                lhInfo.setHash(hash);
-                lhInfo.setJobIds(jobIds);
-                lhInfo.setQueryText(queryText);
-                lhInfo.setTimestamp(timestamp);
-                lhInfo.setUser(user);
-                lhInfo.setUserGroupNames(userGroupNames);
-                lhInfo.setVersion(version);
-                lhInfo.setTableLineages(tableLineages);
-                lhInfo.setColumnLineages(columnLineages);
-                final EventBase<LineageHookInfo> event = new EventBase<LineageHookInfo>();
-                event.setEventType("LINEAGE");
-                event.setContent(lhInfo);
-                event.setId(EventUtils.newId());
-                event.setTimestamp(System.currentTimeMillis());
-                event.setType("HIVE");
-                EventEmitterFactory.get().emit(event);
+                if (hasTableLineage(tableLineages)) {
+                    final LineageHookInfo lhInfo = new LineageHookInfo();
+                    lhInfo.setConf(hookContext.getConf().get("dw_output"));
+                    lhInfo.setDatabase(database);
+                    lhInfo.setDuration(duration);
+                    lhInfo.setEngine(engine);
+                    lhInfo.setHash(hash);
+                    lhInfo.setJobIds(jobIds);
+                    lhInfo.setQueryText(queryText);
+                    lhInfo.setOperationName(operationName);
+                    lhInfo.setTimestamp(timestamp);
+                    lhInfo.setUser(user);
+                    lhInfo.setUserGroupNames(userGroupNames);
+                    lhInfo.setVersion(version);
+                    lhInfo.setTableLineages(tableLineages);
+//                lhInfo.setColumnLineages(columnLineages);
+                    final EventBase<LineageHookInfo> event = new EventBase<LineageHookInfo>();
+                    event.setEventType("LINEAGE");
+                    event.setContent(lhInfo);
+                    event.setId(EventUtils.newId());
+                    event.setTimestamp(System.currentTimeMillis());
+                    event.setType("HIVE");
+//                    EventEmitterFactory.get().emit(event);
+                    EventEmitterFactory.get().sendKafka(lhInfo);
+                }
             }
             catch (Throwable t) {
                 this.log("Failed to log lineage graph, query is not affected\n" + StringUtils.stringifyException(t));
             }
         }
     }
-    
+
+    private boolean hasTableLineage(List<TableLineage> tableLineages) {
+
+        boolean res = false;
+
+        for (TableLineage tableLineage : tableLineages) {
+            if (org.apache.commons.lang.StringUtils.isNotEmpty(tableLineage.getSrcTable()) &&
+                org.apache.commons.lang.StringUtils.isNotEmpty(tableLineage.getSrcDatabase()) &&
+                org.apache.commons.lang.StringUtils.isNotEmpty(tableLineage.getDestDatabase()) &&
+                org.apache.commons.lang.StringUtils.isNotEmpty(tableLineage.getDestTable())) {
+                res = true;
+                break;
+            }
+        }
+
+        return res;
+
+    }
+
+    /**
+     * Based on the final select operator, find out all the target columns.
+     * For each target column, find out its sources based on the dependency index.
+     */
     private List<Edge> getEdges(final QueryPlan plan, final LineageCtx.Index index) {
         final LinkedHashMap<String, ObjectPair<SelectOperator, Table>> finalSelOps = index.getFinalSelectOps();
         final Map<String, Vertex> vertexCache = new LinkedHashMap<String, Vertex>();
@@ -361,10 +404,5 @@ public class LineageLoggerHook implements ExecuteWithHookContext
         }
     }
     
-    static {
-        (OPERATION_NAMES = new HashSet<String>()).add(HiveOperation.QUERY.getOperationName());
-        LineageLoggerHook.OPERATION_NAMES.add(HiveOperation.CREATETABLE_AS_SELECT.getOperationName());
-        LineageLoggerHook.OPERATION_NAMES.add(HiveOperation.ALTERVIEW_AS.getOperationName());
-        LineageLoggerHook.OPERATION_NAMES.add(HiveOperation.CREATEVIEW.getOperationName());
-    }
+
 }

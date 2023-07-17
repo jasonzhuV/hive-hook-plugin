@@ -1,6 +1,8 @@
 package org.data.meta.hive.model.event;
 
-public interface Event<T> {
+import org.data.meta.hive.model.message.Message;
+
+public interface Event<T> extends Message {
     String getEventType();
 
     String getId();

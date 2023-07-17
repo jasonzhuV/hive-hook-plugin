@@ -6,24 +6,26 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import javax.security.auth.login.LoginException;
+
+import javolution.util.Index;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.metastore.MetaStorePreEventListener;
 import org.apache.hadoop.hive.metastore.api.Database;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
-import org.apache.hadoop.hive.metastore.api.Index;
+//import org.apache.hadoop.hive.metastore.api.Index;
 import org.apache.hadoop.hive.metastore.api.InvalidOperationException;
 import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.metastore.api.NoSuchObjectException;
 import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.hive.metastore.api.Table;
-import org.apache.hadoop.hive.metastore.events.PreAddIndexEvent;
+//import org.apache.hadoop.hive.metastore.events.PreAddIndexEvent;
 import org.apache.hadoop.hive.metastore.events.PreAddPartitionEvent;
-import org.apache.hadoop.hive.metastore.events.PreAlterIndexEvent;
+//import org.apache.hadoop.hive.metastore.events.PreAlterIndexEvent;
 import org.apache.hadoop.hive.metastore.events.PreAlterTableEvent;
 import org.apache.hadoop.hive.metastore.events.PreCreateDatabaseEvent;
 import org.apache.hadoop.hive.metastore.events.PreCreateTableEvent;
 import org.apache.hadoop.hive.metastore.events.PreDropDatabaseEvent;
-import org.apache.hadoop.hive.metastore.events.PreDropIndexEvent;
+//import org.apache.hadoop.hive.metastore.events.PreDropIndexEvent;
 import org.apache.hadoop.hive.metastore.events.PreDropPartitionEvent;
 import org.apache.hadoop.hive.metastore.events.PreDropTableEvent;
 import org.apache.hadoop.hive.metastore.events.PreEventContext;
@@ -133,31 +135,31 @@ public class MetaStorePreAuditListener extends MetaStorePreEventListener {
                 auditLog = new AuditLog(preEventType.name(), user, groups, db, null, null);
                 this.emitEvent(auditLog);
                 break;
-            case ADD_INDEX:
-                PreAddIndexEvent preAddIndexEvent = (PreAddIndexEvent)preEventContext;
-                droppedIndex = preAddIndexEvent.getIndex();
-                db = droppedIndex.getDbName();
-                tbl = droppedIndex.getIndexTableName();
-                auditLog = new AuditLog(preEventType.name(), user, groups, db, tbl, null);
-                this.emitEvent(auditLog);
-                break;
-            case ALTER_INDEX:
-                PreAlterIndexEvent preAlterIndexEvent = (PreAlterIndexEvent)preEventContext;
-                droppedIndex = preAlterIndexEvent.getOldIndex();
-                Index newIndex = preAlterIndexEvent.getNewIndex();
-                tbl = newIndex.getDbName();
-                tbl = newIndex.getIndexTableName();
-                auditLog = new AuditLog(preEventType.name(), user, groups, tbl, tbl, null);
-                this.emitEvent(auditLog);
-                break;
-            case DROP_INDEX:
-                PreDropIndexEvent preDropIndexEvent = (PreDropIndexEvent)preEventContext;
-                droppedIndex = preDropIndexEvent.getIndex();
-                db = droppedIndex.getDbName();
-                tbl = droppedIndex.getIndexTableName();
-                auditLog = new AuditLog(preEventType.name(), user, groups, db, tbl, null);
-                this.emitEvent(auditLog);
-                break;
+//            case ADD_INDEX:
+//                PreAddIndexEvent preAddIndexEvent = (PreAddIndexEvent)preEventContext;
+//                droppedIndex = preAddIndexEvent.getIndex();
+//                db = droppedIndex.getDbName();
+//                tbl = droppedIndex.getIndexTableName();
+//                auditLog = new AuditLog(preEventType.name(), user, groups, db, tbl, null);
+//                this.emitEvent(auditLog);
+//                break;
+//            case ALTER_INDEX:
+//                PreAlterIndexEvent preAlterIndexEvent = (PreAlterIndexEvent)preEventContext;
+//                droppedIndex = preAlterIndexEvent.getOldIndex();
+//                Index newIndex = preAlterIndexEvent.getNewIndex();
+//                tbl = newIndex.getDbName();
+//                tbl = newIndex.getIndexTableName();
+//                auditLog = new AuditLog(preEventType.name(), user, groups, tbl, tbl, null);
+//                this.emitEvent(auditLog);
+//                break;
+//            case DROP_INDEX:
+//                PreDropIndexEvent preDropIndexEvent = (PreDropIndexEvent)preEventContext;
+//                droppedIndex = preDropIndexEvent.getIndex();
+//                db = droppedIndex.getDbName();
+//                tbl = droppedIndex.getIndexTableName();
+//                auditLog = new AuditLog(preEventType.name(), user, groups, db, tbl, null);
+//                this.emitEvent(auditLog);
+//                break;
             default:
                 break;
             }
@@ -197,7 +199,8 @@ public class MetaStorePreAuditListener extends MetaStorePreEventListener {
         List<String> parts = new ArrayList<>();
         List<FieldSchema> partitionKeys = this.getPartitionKeys(table);
         if (partitionKeys != null) {
-            Partition partition = preDropPartitionEvent.getPartition();
+//            Partition partition = preDropPartitionEvent.getPartition();
+            Partition partition = preDropPartitionEvent.getPartitionIterator().next();
             List<String> partitionValues = partition.getValues();
             if (partitionKeys.size() != partitionValues.size()) {
                 LOG.error("find table partitionKeys do not equal to partition event value size, table : {}.{}, , partitionKeys : {}, partition : {}", new Object[]{table.getDbName(), table.getTableName(), table.getPartitionKeys(), JsonUtils.toJsonString(partition)});

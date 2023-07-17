@@ -39,7 +39,7 @@ public class RollingFileWriter {
     }
 
     private void writerLine(String line) throws IOException {
-        this.getWriter().write(line + "\n");
+        this.getWriter().write(line + "\n\n");
         this.getWriter().flush();
     }
 
@@ -96,7 +96,8 @@ public class RollingFileWriter {
     }
 
     private File findWritingFile() {
-        String dir = "/tmp" + File.separator + System.getProperty("user.name") + File.separator;
+//        String dir = "/tmp" + File.separator + System.getProperty("user.name") + File.separator;
+        String dir = "/tmp" + File.separator + "hive-hook" + File.separator;
         File fileDir = new File(dir);
         if (!fileDir.exists() && !fileDir.mkdirs()) {
             LOG.error("create log file failed : {}", this.file);

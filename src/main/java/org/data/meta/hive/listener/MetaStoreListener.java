@@ -122,7 +122,8 @@ public class MetaStoreListener extends MetaStoreEventListener {
         if (partitionEvent.getStatus()) {
             Table table = this.normalizeTable(partitionEvent.getTable());
             List<String> partitions = new ArrayList<>();
-            Partition partition = partitionEvent.getPartition();
+//            Partition partition = partitionEvent.getPartition();
+            Partition partition = partitionEvent.getPartitionIterator().next();
             String dropPartName = this.buildDropPartitionName(partition, table);
             if (StringUtils.isNotEmpty(dropPartName)) {
                 partitions.add(dropPartName);
@@ -347,9 +348,21 @@ public class MetaStoreListener extends MetaStoreEventListener {
 
         try {
             EventEmitterFactory.get().emit(metaEvent);
+            EventEmitterFactory.get().sendKafka(action);
         } catch (IOException var4) {
             LOG.error("EventEmitter emit failed", var4);
         }
+//        if (action == null) {
+//            LOG.error("emitAction failed, action is null");
+//        }
+//
+//        HiveMetaEvent metaEvent = HiveMetaEvent.of(action);
+//
+//        try {
+//            EventEmitterFactory.get().emit(metaEvent);
+//        } catch (IOException var4) {
+//            LOG.error("EventEmitter emit failed", var4);
+//        }
 
     }
 
