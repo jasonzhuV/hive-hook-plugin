@@ -21,15 +21,15 @@ import java.util.Properties;
  */
 public class RollingFileEmitterImpl implements EventEmitter {
     private static final RollingFileWriter rollingFileWriter = new RollingFileWriter(50000, "hook.event");
-
     private static final Properties prop = new Properties();
-
     private KafkaProducer<String, String> producer;
+//    private static String KAFKA_BROKERS = "172.41.4.87:9092,172.41.4.58:9092,172.41.4.71:9092";
+    private static String KAFKA_BROKERS = "node1:9092,node2:9092,node3:9092";
 
 
     public RollingFileEmitterImpl() {
 //        prop.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,"172.19.161.128:9092,172.19.161.169:9092,172.19.161.181:9092");
-        prop.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,"172.41.4.87:9092,172.41.4.58:9092,172.41.4.71:9092");
+        prop.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA_BROKERS);
         prop.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         prop.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         prop.put("acks","all");
@@ -52,9 +52,8 @@ public class RollingFileEmitterImpl implements EventEmitter {
 
 
     @Override
-    public <T> void sendKafka(Message message) {
+    public <T> void sendKafka(Message message, String topic) {
         ObjectMapper om = new ObjectMapper();
-        String topic ="hive-lineage-change";
         try {
             producer.send(new ProducerRecord<String, String>(topic, om.writeValueAsString(message)));
         } catch (JsonProcessingException e) {

@@ -6,7 +6,7 @@
 
     <groupId>org.data</groupId>
     <artifactId>hive-hook-plugin</artifactId>
-    <version>1.0.5-prod</version>
+    <version>1.0.6-test</version>
 
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>

@@ -14,5 +14,5 @@ public interface EventEmitter {
      * @param <T>
      * @throws IOException
      */
-    <T> void sendKafka(Message message) throws IOException;
+    <T> void sendKafka(Message message, String topic) throws IOException;
 }

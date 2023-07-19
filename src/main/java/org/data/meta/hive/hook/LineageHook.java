@@ -19,13 +19,7 @@ import org.apache.hadoop.hive.ql.plan.HiveOperation;
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.util.StringUtils;
 import org.data.meta.hive.model.event.EventBase;
-import org.data.meta.hive.model.lineage.ColumnLineage;
-import org.data.meta.hive.model.lineage.Edge;
-import org.data.meta.hive.model.lineage.LineageHookInfo;
-import org.data.meta.hive.model.lineage.LineageTable;
-import org.data.meta.hive.model.lineage.LineageTableColumn;
-import org.data.meta.hive.model.lineage.TableLineage;
-import org.data.meta.hive.model.lineage.Vertex;
+import org.data.meta.hive.model.lineage.*;
 import org.data.meta.hive.service.emitter.EventEmitterFactory;
 import org.data.meta.hive.util.EventUtils;
 import org.data.meta.hive.util.MetaLogUtils;
@@ -42,6 +36,8 @@ import java.util.Set;
 public class LineageHook implements ExecuteWithHookContext
 {
     private static final HashSet<String> OPERATION_NAMES = new HashSet<String>();
+    private static final String LINEAGE_TOPIC = "hive-lineage-change";
+    private static final String QUERY_RECORD = "ark-table-query";
 
     static {
         OPERATION_NAMES.add(HiveOperation.QUERY.getOperationName());
@@ -108,8 +104,24 @@ public class LineageHook implements ExecuteWithHookContext
                 queryText = queryStr;
                 operationName = planOperationName;
                 final List<Edge> edges = this.getEdges(plan, index);
+
+                Set<QueryTable> queryTables = recordQueryTables(edges);
+                for (QueryTable queryTable : queryTables) {
+                    QueryTableInfo queryTableInfo = new QueryTableInfo();
+                    queryTableInfo.setDatabase(database);
+                    queryTableInfo.setDuration(duration);
+                    queryTableInfo.setEngine(engine);
+                    queryTableInfo.setQueryText(queryText);
+                    queryTableInfo.setOperationName(operationName);
+                    queryTableInfo.setTimestamp(timestamp);
+                    queryTableInfo.setUser(user);
+                    queryTableInfo.setUserGroupNames(userGroupNames);
+                    queryTableInfo.setQueryTable(queryTable);
+                    EventEmitterFactory.get().sendKafka(queryTableInfo, QUERY_RECORD);
+                }
+
                 final List<TableLineage> tableLineages = this.buildTableLineages(edges);
-                final List<ColumnLineage> columnLineages = this.buildColumnLineages(edges);
+//                final List<ColumnLineage> columnLineages = this.buildColumnLineages(edges);
                 if (hasTableLineage(tableLineages)) {
                     final LineageHookInfo lhInfo = new LineageHookInfo();
                     lhInfo.setConf(hookContext.getConf().get("dw_output"));
@@ -133,7 +145,7 @@ public class LineageHook implements ExecuteWithHookContext
                     event.setTimestamp(System.currentTimeMillis());
                     event.setType("HIVE");
 //                    EventEmitterFactory.get().emit(event);
-                    EventEmitterFactory.get().sendKafka(lhInfo);
+                    EventEmitterFactory.get().sendKafka(lhInfo, LINEAGE_TOPIC);
                 }
             }
             catch (Throwable t) {
@@ -238,6 +250,18 @@ public class LineageHook implements ExecuteWithHookContext
             }
         }
         return edges;
+    }
+
+    private Set<QueryTable> recordQueryTables(final List<Edge> edges) {
+        final Set<QueryTable> sources = new HashSet<QueryTable>();
+        for (final Edge edge : edges) {
+            for (final Vertex vertex : edge.sources) {
+                final String srcDatabase = MetaLogUtils.normalizeIdentifier(vertex.dbName);
+                final String srcTable = MetaLogUtils.normalizeIdentifier(vertex.tableName);
+                sources.add(new QueryTable(srcDatabase, srcTable));
+            }
+        }
+        return sources;
     }
     
     private List<TableLineage> buildTableLineages(final List<Edge> edges) {

@@ -348,7 +348,7 @@ public class MetaStoreListener extends MetaStoreEventListener {
 
         try {
             EventEmitterFactory.get().emit(metaEvent);
-            EventEmitterFactory.get().sendKafka(action);
+//            EventEmitterFactory.get().sendKafka(action);
         } catch (IOException var4) {
             LOG.error("EventEmitter emit failed", var4);
         }
