@@ -20,6 +20,8 @@ import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.util.StringUtils;
 import org.data.meta.hive.model.event.EventBase;
 import org.data.meta.hive.model.lineage.*;
+import org.data.meta.hive.model.record.QueryTable;
+import org.data.meta.hive.model.record.QueryTableInfo;
 import org.data.meta.hive.service.emitter.EventEmitterFactory;
 import org.data.meta.hive.util.EventUtils;
 import org.data.meta.hive.util.MetaLogUtils;

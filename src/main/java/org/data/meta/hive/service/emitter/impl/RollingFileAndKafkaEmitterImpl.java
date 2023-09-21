@@ -19,16 +19,13 @@ import java.util.Properties;
 /**
  * @author jason
  */
-public class RollingFileEmitterImpl implements EventEmitter {
+public class RollingFileAndKafkaEmitterImpl implements EventEmitter {
     private static final RollingFileWriter rollingFileWriter = new RollingFileWriter(50000, "hook.event");
     private static final Properties prop = new Properties();
     private KafkaProducer<String, String> producer;
-//    private static String KAFKA_BROKERS = "172.41.4.87:9092,172.41.4.58:9092,172.41.4.71:9092";
-    private static String KAFKA_BROKERS = "node1:9092,node2:9092,node3:9092";
+    private static String KAFKA_BROKERS = "172.41.4.87:9092,172.41.4.58:9092,172.41.4.71:9092";
 
-
-    public RollingFileEmitterImpl() {
-//        prop.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,"172.19.161.128:9092,172.19.161.169:9092,172.19.161.181:9092");
+    public RollingFileAndKafkaEmitterImpl() {
         prop.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA_BROKERS);
         prop.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         prop.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");

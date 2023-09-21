@@ -1,11 +1,10 @@
-package org.data.meta.hive.model.lineage;
+package org.data.meta.hive.model.record;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.data.meta.hive.model.message.Message;
-
-import java.util.List;
+import org.data.meta.hive.model.record.QueryTable;
 
 /**
  * @author : zhupeiwen

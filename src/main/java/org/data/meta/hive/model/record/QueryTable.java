@@ -1,4 +1,4 @@
-package org.data.meta.hive.model.lineage;
+package org.data.meta.hive.model.record;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
