@@ -41,6 +41,8 @@ public class LineageHook implements ExecuteWithHookContext
     private static final String LINEAGE_TOPIC = "hive-lineage-change";
     private static final String QUERY_RECORD = "ark-table-query";
 
+    private static final String INSERT_RECORD = "ark-table-insert";
+
     static {
         OPERATION_NAMES.add(HiveOperation.QUERY.getOperationName());
         OPERATION_NAMES.add(HiveOperation.CREATETABLE_AS_SELECT.getOperationName());
@@ -120,6 +122,20 @@ public class LineageHook implements ExecuteWithHookContext
                     queryTableInfo.setUserGroupNames(userGroupNames);
                     queryTableInfo.setQueryTable(queryTable);
                     EventEmitterFactory.get().sendKafka(queryTableInfo, QUERY_RECORD);
+                }
+                Set<QueryTable> insertTables = recordInsertTables(edges);
+                for (QueryTable insertTable : insertTables) {
+                    QueryTableInfo queryTableInfo = new QueryTableInfo();
+                    queryTableInfo.setDatabase(database);
+                    queryTableInfo.setDuration(duration);
+                    queryTableInfo.setEngine(engine);
+                    queryTableInfo.setQueryText(queryText);
+                    queryTableInfo.setOperationName(operationName);
+                    queryTableInfo.setTimestamp(timestamp);
+                    queryTableInfo.setUser(user);
+                    queryTableInfo.setUserGroupNames(userGroupNames);
+                    queryTableInfo.setQueryTable(insertTable);
+                    EventEmitterFactory.get().sendKafka(queryTableInfo, INSERT_RECORD);
                 }
 
                 final List<TableLineage> tableLineages = this.buildTableLineages(edges);
@@ -261,6 +277,18 @@ public class LineageHook implements ExecuteWithHookContext
                 final String srcDatabase = MetaLogUtils.normalizeIdentifier(vertex.dbName);
                 final String srcTable = MetaLogUtils.normalizeIdentifier(vertex.tableName);
                 sources.add(new QueryTable(srcDatabase, srcTable));
+            }
+        }
+        return sources;
+    }
+
+    private Set<QueryTable> recordInsertTables(final List<Edge> edges) {
+        final Set<QueryTable> sources = new HashSet<QueryTable>();
+        for (final Edge edge : edges) {
+            for (final Vertex vertex : edge.targets) {
+                final String targetDatabase = MetaLogUtils.normalizeIdentifier(vertex.dbName);
+                final String targetTable = MetaLogUtils.normalizeIdentifier(vertex.tableName);
+                sources.add(new QueryTable(targetDatabase, targetTable));
             }
         }
         return sources;
